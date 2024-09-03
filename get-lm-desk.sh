@@ -28,8 +28,17 @@ jq_bin=$(find_cmd_bin jq || true)
 install_path=""
 chat_model="granite-code:8b"
 autocomplete_model="granite-code:3b"
-yes="0"
 dry_run="0"
+
+# If running without a TTY, always assume 'yes'
+if [[ -t 1 ]]
+then
+    yes="0"
+else
+    echo "RUNNING NON-INTERACTIVE"
+    yes="1"
+fi
+
 
 help_str="Usage: $0 [options]
 Options:
