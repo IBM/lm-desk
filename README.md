@@ -22,7 +22,7 @@ bash -c "$(curl -fsSL 'https://raw.githubusercontent.com/IBM/lm-desk/main/get-lm
 
 ### Models
 
-- [IBM Granite Code](https://github.com/ibm-granite) ([HuggingFace](https://huggingface.co/collections/ibm-granite/granite-code-models-6624c5cec322e4c148c8b330)): IBM Granite Code is a set of open weights AI models with permissive licenses that are tuned for code completion, documentation generation, and other development tasks.
+- [IBM Granite Code](https://github.com/ibm-granite) ([HuggingFace](https://huggingface.co/collections/ibm-granite/granite-code-models-6624c5cec322e4c148c8b330), [GitHub](https://github.com/ibm-granite)): IBM Granite Code is a set of open weights AI models with permissive licenses that are tuned for code completion, documentation generation, and other development tasks.
 
 ### Local Model Serving
 
