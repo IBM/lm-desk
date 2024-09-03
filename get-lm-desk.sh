@@ -26,8 +26,8 @@ git_bin=$(find_cmd_bin git || true)
 code_bin=$(find_cmd_bin code || true)
 jq_bin=$(find_cmd_bin jq || true)
 install_path=""
-chat_model="gabegoodhart/granite-code:8b"
-autocomplete_model="gabegoodhart/granite-code:3b"
+chat_model="granite-code:8b"
+autocomplete_model="granite-code:3b"
 yes="0"
 dry_run="0"
 
