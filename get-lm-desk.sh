@@ -584,6 +584,7 @@ report_installed
 #######################################
 if [ "$curl_bin" == "" ]
 then
+    yes_no_prompt "Install curl?"
     install_curl
     report_installed
 fi
@@ -599,7 +600,7 @@ then
         need_brew="1"
     fi
 fi
-if [ "$need_brew" == "1" ]
+if [ "$need_brew" == "1" ] && yes_no_prompt "Install brew?"
 then
     install_brew
     report_installed
@@ -609,7 +610,7 @@ fi
 ############################
 # Install ollama if needed #
 ############################
-if [ "$ollama_bin" == "" ]
+if [ "$ollama_bin" == "" ] && yes_no_prompt "Install ollama?"
 then
     install_ollama
     report_installed
@@ -619,7 +620,7 @@ fi
 ###############
 # Pull models #
 ###############
-if [ "$ollama_bin" != "" ]
+if [ "$ollama_bin" != "" ] && yes_no_prompt "Pull models?"
 then
     pull_models
 fi
@@ -628,7 +629,7 @@ fi
 # Install continue into VS Code if VS Code is installed #
 #########################################################
 have_continue=0
-if [ "$code_bin" != "" ]
+if [ "$code_bin" != "" ] && yes_no_prompt "Install continue?"
 then
     install_continue
     have_continue=1
@@ -639,7 +640,7 @@ fi
 # Install jq if needed for configuration #
 ##########################################
 continue_config="$HOME/.continue/config.json"
-if [ "$jq_bin" == "" ] && [ "$have_continue" == "1" ] && [ -f $continue_config ]
+if [ "$jq_bin" == "" ] && [ "$have_continue" == "1" ] && [ -f $continue_config ] && yes_no_prompt "Install jq?"
 then
     install_jq
     report_installed
@@ -648,7 +649,7 @@ fi
 ################################################
 # Configure continue to use the desired models #
 ################################################
-if [ "$have_continue" ] && [ -f $continue_config ]
+if [ "$have_continue" ] && [ -f $continue_config ] && [ "$jq_bin" != "" ] && yes_no_prompt "Configure continue?"
 then
     configure_continue
     report_installed
