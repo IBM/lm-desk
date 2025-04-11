@@ -330,6 +330,7 @@ function report_installed {
     brown "- uv: $uv_bin"
     brown "- git: $git_bin"
     brown "- code: $code_bin"
+    brown "- jq: $jq_bin"
     brown $(term_bar -)
 }
 
@@ -516,6 +517,123 @@ function install_uv {
     # Otherwise, use curl to pull from GH release directly
     else
         install_uv_curl
+    fi
+}
+
+#----
+# Install continue into VS Code
+#----
+function install_continue {
+    if "$code_bin" --list-extensions | grep continue\.continue &>/dev/null
+    then
+        blue "Continue already installed in Visual Studio Code"
+    else
+        green "$(term_bar -)"
+        bold green "INSTALLING CONTINUE"
+        green "$(term_bar -)"
+        run "$code_bin" --install-extension "continue.continue"
+    fi
+}
+
+#----
+# Install jq
+#----
+function install_jq {
+    green "$(term_bar -)"
+    bold green "INSTALLING JQ"
+    green "$(term_bar -)"
+
+    if [ "$curl_bin" != "" ]
+    then
+        green "Downloading temporary jq"
+        plat=""
+        if [ "$OS" == "Darwin" ]
+        then
+            plat="macos"
+        elif [ "$OS" == "Linux" ]
+        then
+            plat="linux"
+        else
+            fail "Cannot install jq on $OS"
+        fi
+        suffix=""
+        if [ "$ARCH" == "arm64" ]
+        then
+            suffix="arm64"
+        elif [ "$ARCH" == "x86_64" ]
+        then
+            suffix="amd64"
+        else
+            bold red "Unable to install jq"
+        fi
+        if [ "$suffix" != "" ]
+        then
+            latest_jq_release=$(
+                "$curl_bin" -s https://api.github.com/repos/jqlang/jq/releases/latest | \
+                    grep '"tag_name":' | \
+                    sed -E 's/.*"([^"]+)".*/\1/'
+            )
+            blue "Latest jq release: $latest_jq_release"
+            run "$curl_bin" -L https://github.com/jqlang/jq/releases/download/${latest_jq_release}/jq-${plat}-${suffix} -o jq
+            run chmod +x jq
+            temp_bin=$(mktemp -d)
+            jq_bin=$"$temp_bin/jq"
+            mv jq $jq_bin
+        fi
+    else
+        green "Installing jq with brew"
+        run "$brew_bin" install jq
+        jq_bin="$(find_cmd_bin jq)"
+    fi
+}
+
+#----
+# Configure continue to use the desired models
+#----
+function configure_continue {
+    green "$(term_bar -)"
+    bold green "CONFIGURING CONTINUE"
+    green "- Chat Model: $chat_model"
+    green "- Autocomplete Model: $autocomplete_model"
+    green "$(term_bar -)"
+
+    # Check preconditions
+    if [ "$jq_bin" == "" ]
+    then
+        fail "Cannot configure continue without jq"
+    fi
+    if [ "$continue_config" == "" ] || ! [ -f "$continue_config" ]
+    then
+        fail "Cannot configure continue before installing it"
+    fi
+
+    # Add the chat model to the front of the list if needed
+    updated_config=$(cat "$continue_config")
+    if [ "$(echo "$updated_config" | "$jq_bin" ".models[] | select(.title == \"${chat_model}\")")" == "" ]
+    then
+        current_models=$(echo "$updated_config" | "$jq_bin" -r '.models')
+        updated_config=$(
+            echo "$updated_config" \
+            | "$jq_bin" ".models = []" \
+            | "$jq_bin" ".models += [{\"title\": \"$chat_model\", \"provider\": \"ollama\", \"model\": \"$chat_model\"}]" \
+            | "$jq_bin" ".models += $current_models"
+        )
+    else
+        blue "Found existing 'models' entry named '$chat_model'"
+    fi
+
+    # Set the autocomplete model
+    updated_config=$(
+        echo "$updated_config" \
+        | "$jq_bin" ".tabAutocompleteModel = {\"title\": \"$autocomplete_model\", \"provider\":\"ollama\", \"model\": \"$autocomplete_model\"}"
+    )
+
+    if [ "$dry_run" == "1" ]
+    then
+        magenta "DRY RUN: Updated config"
+        echo "$updated_config" | "$jq_bin"
+    else
+        echo "$updated_config"  | "$jq_bin" > $continue_config
     fi
 }
 
