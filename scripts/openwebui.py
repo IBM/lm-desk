@@ -14,7 +14,10 @@ import random
 from pathlib import Path
 
 KEY_FILE = Path.cwd() / ".webui_secret_key"
+
 os.environ["FROM_INIT_PY"] = "true"
+os.environ['WEBUI_SECRET_KEY'] = "l*cals3cre7*"
+
 
 if os.getenv("WEBUI_SECRET_KEY") is None:
     if not KEY_FILE.exists():
