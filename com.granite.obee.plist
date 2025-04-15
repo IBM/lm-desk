@@ -8,7 +8,7 @@
         <array>
             <string><UV_BIN></string>
             <string>run</string>
-            <string>/Users/veroniquedemers/git/github/lm-desk/scripts/openwebui.py</string>
+            <string>https://raw.githubusercontent.com/vedem1192/lm-desk/refs/heads/main/scripts/openwebui.py</string>
         </array>
         <key>KeepAlive</key>
             <true/>
