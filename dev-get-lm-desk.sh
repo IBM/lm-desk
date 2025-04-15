@@ -30,7 +30,6 @@ install_path=""
 chat_model="granite3.2:8b"
 autocomplete_model="granite3.2:2b"
 dry_run="0"
-run_open_webui="0"
 
 # If running without a TTY, always assume 'yes'
 if [[ -t 1 ]]
@@ -55,8 +54,7 @@ Options:
     -p, --chat-model         Specify the path to chat model (default is ${chat_model})
     -a, --autocomplete-model Specify the path to autocomplete model (default is ${autocomplete_model})
     -y, --yes                Skip confirmation prompt
-    -n, --dry-run            Run without installing anything
-    -r, --run-owui           Run open web ui"
+    -n, --dry-run            Run without installing anything"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -105,9 +103,6 @@ while [ $# -gt 0 ]; do
             ;;
         --dry-run|-n)
             dry_run="1"
-            ;;
-        --run-owui|-r)
-            run_open_webui="1"
             ;;
         *)
             echo "Invalid argument: $1" >&2
@@ -399,21 +394,14 @@ function install_uv_brew {
 # Install ollama with curl from github
 #----
 function install_ollama_curl {
-    echo "Installing ollama from GitHub Release"
-    latest_release=$(
-        "$curl_bin" -s https://api.github.com/repos/ollama/ollama/releases/latest | \
-            grep '"tag_name":' | \
-            sed -E 's/.*"(v?[^"]+)".*/\1/'
-    )
-    blue "Latest release: $latest_release"
+    echo "Installing Ollama using curl"
     if [ "$OS" == "Darwin" ]
     then
         echo "Installing on darwin"
-        run "$curl_bin" -L https://github.com/ollama/ollama/releases/download/${latest_release}/ollama-darwin -o ollama
-        run chmod +x ollama
-        ensure_install_path
-        ollama_bin="$install_path/ollama"
-        run mv ollama $ollama_bin
+        run "$curl_bin" -L -O https://ollama.com/download/Ollama-darwin.zip
+        run unzip Ollama-darwin.zip
+        run mv Ollama.app /Applications
+        run rm Ollama-darwin.zip
     elif [ "$OS" == "Linux" ]
     then
         echo "Installing on linux"
@@ -455,7 +443,7 @@ function install_ollama {
     if [ "$brew_bin" != "" ]
     then
         install_ollama_brew
-    # Otherwise, use curl to pull from GH release directly
+    # Otherwise, use curl to download ollama
     else
         install_ollama_curl
     fi
@@ -519,6 +507,40 @@ function install_uv {
     fi
 }
 
+#----
+# Install obee
+#----
+function install_obee {
+    green "$(term_bar -)"
+    bold green "INSTALLING OBEE"
+    green "$(term_bar -)"
+
+    # ONLY FOR MACOS
+    # 1. Do the plist stuff
+    curl -o ~/Library/LaunchAgents/com.granite.ollama.plist https://raw.githubusercontent.com/vedem1192/lm-desk/refs/heads/main/com.granite.ollama.plist
+    curl -o ~/Library/LaunchAgents/com.granite.obee.plist https://raw.githubusercontent.com/vedem1192/lm-desk/refs/heads/main/com.granite.obee.plist
+
+    open_webui_script=/Users/veroniquedemers/git/github/lm-desk/scripts/openwebui.py
+
+    if [ "$ollama_bin" != "" ] && [ "$uv_bin" != "" ]; then
+        sed -i '' -e 's|<OLLAMA_BIN>|'"$ollama_bin"'|g' ~/Library/LaunchAgents/com.granite.ollama.plist
+        sed -i '' -e 's|<UV_BIN>|'"$uv_bin"'|g' ~/Library/LaunchAgents/com.granite.obee.plist
+        sed -i '' -e 's|<OPEN_WEBUI_SCRIPT>|'"$open_webui_script"'|g' ~/Library/LaunchAgents/com.granite.obee.plist
+    fi
+
+
+    # 2. Do the brew tap stuff
+    if [ "$brew_bin" != "" ]
+    then
+        run $brew_bin update
+        run $brew_bin tap vedem1192/obee
+        run $brew_bin install obee
+    # Otherwise, use curl to pull from GH release directly
+    else
+        echo "You are missing out"
+    fi
+}
+
 
 ## Main ########################################################################
 report_installed
@@ -570,7 +592,7 @@ then
 fi
 
 ############################
-# Install uv if needed #
+# Install uv if needed     #
 ############################
 if [ "$uv_bin" == "" ] && yes_no_prompt "Install uv?"
 then
@@ -578,12 +600,20 @@ then
     report_installed
 fi
 
+############################
+# Install obee             #
+############################
+if yes_no_prompt "Install obee?"
+then
+    install_obee
+fi
+
 
 ############################
 # Run everything 
 ############################
-if [ "$run_open_webui" == "0" ] && yes_no_prompt "Run Openwebui?"
-then
-    run $ollama_bin start |
-    run $uv_bin run https://raw.githubusercontent.com/vedem1192/lm-desk/refs/heads/main/scripts/openwebui.py
-fi
+# if [ "$run_open_webui" == "0" ] && yes_no_prompt "Run Openwebui?"
+# then
+#     run $ollama_bin start |
+#     run $uv_bin run https://raw.githubusercontent.com/vedem1192/lm-desk/refs/heads/main/scripts/openwebui.py
+# fi
