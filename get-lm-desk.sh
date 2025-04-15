@@ -24,10 +24,12 @@ brew_bin=$(find_cmd_bin brew || true)
 ollama_bin=$(find_cmd_bin ollama || true)
 git_bin=$(find_cmd_bin git || true)
 code_bin=$(find_cmd_bin code || true)
+uv_bin=$(find_cmd_bin uv || true)
+obee_bin=$(find_cmd_bin obee || true)
 jq_bin=$(find_cmd_bin jq || true)
 install_path=""
-chat_model="granite-code:8b"
-autocomplete_model="granite-code:3b"
+chat_model="granite3.2:8b"
+autocomplete_model="granite3.2:2b"
 dry_run="0"
 
 # If running without a TTY, always assume 'yes'
@@ -321,6 +323,8 @@ function report_installed {
     brown "- curl: $curl_bin"
     brown "- brew: $brew_bin"
     brown "- ollama: $ollama_bin"
+    brown "- uv: $uv_bin"
+    brown "- obee: $obee_bin"
     brown "- git: $git_bin"
     brown "- code: $code_bin"
     brown "- jq: $jq_bin"
@@ -379,26 +383,28 @@ function install_ollama_brew {
     ollama_bin=$(find_cmd_bin ollama)
 }
 
+#----
+# Install uv with homebrew
+#----
+function install_uv_brew {
+    echo "Using brew ($brew_bin)"
+    run $brew_bin install uv
+    uv_bin=$(find_cmd_bin uv)
+}
+
 
 #----
 # Install ollama with curl from github
 #----
 function install_ollama_curl {
-    echo "Installing ollama from GitHub Release"
-    latest_release=$(
-        "$curl_bin" -s https://api.github.com/repos/ollama/ollama/releases/latest | \
-            grep '"tag_name":' | \
-            sed -E 's/.*"(v?[^"]+)".*/\1/'
-    )
-    blue "Latest release: $latest_release"
+    echo "Installing Ollama using curl"
     if [ "$OS" == "Darwin" ]
     then
         echo "Installing on darwin"
-        run "$curl_bin" -L https://github.com/ollama/ollama/releases/download/${latest_release}/ollama-darwin -o ollama
-        run chmod +x ollama
-        ensure_install_path
-        ollama_bin="$install_path/ollama"
-        run mv ollama $ollama_bin
+        run "$curl_bin" -L -O https://ollama.com/download/Ollama-darwin.zip
+        run unzip Ollama-darwin.zip
+        run mv Ollama.app /Applications
+        run rm Ollama-darwin.zip
     elif [ "$OS" == "Linux" ]
     then
         echo "Installing on linux"
@@ -406,6 +412,25 @@ function install_ollama_curl {
         ollama_bin="$(find_cmd_bin ollama)"
     else
         fail "Cannot install ollama using curl with OS[$OS]/ARCH[$ARCH]"
+    fi
+}
+
+#----
+# Install uv with curl 
+#----
+function install_uv_curl {
+    echo "Installing uv with curl"
+    
+    if [ "$OS" == "Darwin" ]
+    then
+        echo "Installing on darwin -- not ready yet"
+    elif [ "$OS" == "Linux" ]
+    then
+        echo "Installing on linux"
+        run curl -LsSf https://astral.sh/uv/install.sh | sh
+        uv_bin="$(find_cmd_bin uv)"
+    else
+        fail "Cannot install uv using curl with OS[$OS]/ARCH[$ARCH]"
     fi
 }
 
@@ -421,7 +446,7 @@ function install_ollama {
     if [ "$brew_bin" != "" ]
     then
         install_ollama_brew
-    # Otherwise, use curl to pull from GH release directly
+    # Otherwise, use curl to download ollama
     else
         install_ollama_curl
     fi
@@ -466,6 +491,24 @@ function pull_models {
     fi
 }
 
+
+#----
+# Install uv 
+#----
+function install_uv {
+    green "$(term_bar -)"
+    bold green "INSTALLING UV"
+    green "$(term_bar -)"
+
+    # If brew is available use brew
+    if [ "$brew_bin" != "" ]
+    then
+        install_uv_brew
+    # Otherwise, use curl to pull from GH release directly
+    else
+        install_uv_curl
+    fi
+}
 
 #----
 # Install continue into VS Code
@@ -584,9 +627,44 @@ function configure_continue {
     fi
 }
 
+
+#----
+# Install obee
+#----
+function install_obee {
+    green "$(term_bar -)"
+    bold green "INSTALLING OBEE"
+    green "$(term_bar -)"
+
+    # ONLY FOR MACOS
+    # 1. Do the plist stuff 
+    curl -o ~/Library/LaunchAgents/com.granite.ollama.plist https://raw.githubusercontent.com/vedem1192/lm-desk/refs/heads/main/com.granite.ollama.plist
+    curl -o ~/Library/LaunchAgents/com.granite.obee.plist https://raw.githubusercontent.com/vedem1192/lm-desk/refs/heads/main/com.granite.obee.plist
+
+    open_webui_script=https://raw.githubusercontent.com/vedem1192/lm-desk/refs/heads/main/scripts/openwebui.py
+
+    if [ "$ollama_bin" != "" ] && [ "$uv_bin" != "" ]; then
+        sed -i '' -e 's|<OLLAMA_BIN>|'"$ollama_bin"'|g' ~/Library/LaunchAgents/com.granite.ollama.plist
+        sed -i '' -e 's|<UV_BIN>|'"$uv_bin"'|g' ~/Library/LaunchAgents/com.granite.obee.plist
+        sed -i '' -e 's|<OPEN_WEBUI_SCRIPT>|'"$open_webui_script"'|g' ~/Library/LaunchAgents/com.granite.obee.plist
+    fi
+
+
+    # 2. Do the brew tap stuff
+    if [ "$brew_bin" != "" ]
+    then
+        run $brew_bin update
+        run $brew_bin tap vedem1192/obee
+        run $brew_bin install obee
+    # Otherwise, use curl to pull from GH release directly
+    else
+        echo "You are missing out"
+    fi
+}
+
+
 ## Main ########################################################################
 report_installed
-
 
 #######################################
 # Install curl to install other tools #
@@ -634,39 +712,19 @@ then
     pull_models
 fi
 
-#########################################################
-# Install continue into VS Code if VS Code is installed #
-#########################################################
-have_continue=0
-if [ "$code_bin" != "" ] && yes_no_prompt "Install continue?"
+############################
+# Install uv if needed #
+############################
+if [ "$uv_bin" == "" ] && yes_no_prompt "Install uv?"
 then
-    install_continue
-    have_continue=1
-fi
-
-
-##########################################
-# Install jq if needed for configuration #
-##########################################
-continue_config="$HOME/.continue/config.json"
-if [ "$jq_bin" == "" ] && [ "$have_continue" == "1" ] && [ -f $continue_config ] && yes_no_prompt "Install jq?"
-then
-    install_jq
+    install_uv
     report_installed
 fi
 
-################################################
-# Configure continue to use the desired models #
-################################################
-if [ "$have_continue" ] && [ -f $continue_config ] && [ "$jq_bin" != "" ] && yes_no_prompt "Configure continue?"
+############################
+# Install obee             #
+############################
+if [ "$obee_bin" == "" ] &&  yes_no_prompt "Install obee?"
 then
-    configure_continue
-    report_installed
+    install_obee
 fi
-
-
-################################
-# Install ollama-bar if needed #
-################################
-# if ! [ -d "/Applications/ollama-bar.app" ]
-
