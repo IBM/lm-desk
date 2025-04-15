@@ -400,21 +400,14 @@ function install_uv_brew {
 # Install ollama with curl from github
 #----
 function install_ollama_curl {
-    echo "Installing ollama from GitHub Release"
-    latest_release=$(
-        "$curl_bin" -s https://api.github.com/repos/ollama/ollama/releases/latest | \
-            grep '"tag_name":' | \
-            sed -E 's/.*"(v?[^"]+)".*/\1/'
-    )
-    blue "Latest release: $latest_release"
+    echo "Installing Ollama using curl"
     if [ "$OS" == "Darwin" ]
     then
         echo "Installing on darwin"
-        run "$curl_bin" -L https://github.com/ollama/ollama/releases/download/${latest_release}/ollama-darwin -o ollama
-        run chmod +x ollama
-        ensure_install_path
-        ollama_bin="$install_path/ollama"
-        run mv ollama $ollama_bin
+        run "$curl_bin" -L -O https://ollama.com/download/Ollama-darwin.zip
+        run unzip Ollama-darwin.zip
+        run mv Ollama.app /Applications
+        run rm Ollama-darwin.zip
     elif [ "$OS" == "Linux" ]
     then
         echo "Installing on linux"
@@ -456,7 +449,7 @@ function install_ollama {
     if [ "$brew_bin" != "" ]
     then
         install_ollama_brew
-    # Otherwise, use curl to pull from GH release directly
+    # Otherwise, use curl to download ollama
     else
         install_ollama_curl
     fi
