@@ -32,6 +32,28 @@ INFO:     Waiting for application startup.
 2025-04-03 16:16:42.173 | INFO     | open_webui.utils.logger:start_logger:140 - GLOBAL_LOG_LEVEL: INFO - {}
 ```
 
+If you want to start Openwebui, wait until you see this in your terminal, then head to <http://localhost:8080>
+
+```
+
+ ██████╗ ██████╗ ███████╗███╗   ██╗    ██╗    ██╗███████╗██████╗ ██╗   ██╗██╗
+██╔═══██╗██╔══██╗██╔════╝████╗  ██║    ██║    ██║██╔════╝██╔══██╗██║   ██║██║
+██║   ██║██████╔╝█████╗  ██╔██╗ ██║    ██║ █╗ ██║█████╗  ██████╔╝██║   ██║██║
+██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║    ██║███╗██║██╔══╝  ██╔══██╗██║   ██║██║
+╚██████╔╝██║     ███████╗██║ ╚████║    ╚███╔███╔╝███████╗██████╔╝╚██████╔╝██║
+ ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝     ╚══╝╚══╝ ╚══════╝╚═════╝  ╚═════╝ ╚═╝
+
+
+v0.6.0 - building the best open-source AI user interface.
+
+https://github.com/open-webui/open-webui
+
+Fetching 30 files: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 30/30 [00:00<00:00, 16491.37it/s]
+INFO:     Started server process [89086]
+INFO:     Waiting for application startup.
+2025-04-03 16:16:42.173 | INFO     | open_webui.utils.logger:start_logger:140 - GLOBAL_LOG_LEVEL: INFO - {}
+```
+
 ## Principles
 
 - **5-Minutes to Happiness**: You should be able to get up and running with these AI tools in 5 minutes or less (as long as you have a fast internet connection!)
