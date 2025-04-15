@@ -7,7 +7,7 @@ The LM Desk project is a central entrypoint for configuring a set of awesome too
 ## Quick Start
 
 ```sh
-bash -c "$(curl -fsSL 'https://raw.githubusercontent.com/vedem1192/lm-desk/main/dev-get-lm-desk.sh')"
+bash -c "$(curl -fsSL 'https://raw.githubusercontent.com/IBM/lm-desk/main/get-lm-desk.sh')"
 ```
 
 If you want to start Openwebui, wait until you see this in your terminal, then head to <http://localhost:8080>

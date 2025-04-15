@@ -31,7 +31,6 @@ install_path=""
 chat_model="granite3.2:8b"
 autocomplete_model="granite3.2:2b"
 dry_run="0"
-run_open_webui="0"
 
 # If running without a TTY, always assume 'yes'
 if [[ -t 1 ]]
@@ -56,8 +55,7 @@ Options:
     -p, --chat-model         Specify the path to chat model (default is ${chat_model})
     -a, --autocomplete-model Specify the path to autocomplete model (default is ${autocomplete_model})
     -y, --yes                Skip confirmation prompt
-    -n, --dry-run            Run without installing anything
-    -r, --run-owui           Run open web ui"
+    -n, --dry-run            Run without installing anything"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -106,9 +104,6 @@ while [ $# -gt 0 ]; do
             ;;
         --dry-run|-n)
             dry_run="1"
-            ;;
-        --run-owui|-r)
-            run_open_webui="1"
             ;;
         *)
             echo "Invalid argument: $1" >&2
@@ -641,7 +636,7 @@ function install_obee {
     green "$(term_bar -)"
 
     # ONLY FOR MACOS
-    # 1. Do the plist stuff
+    # 1. Do the plist stuff 
     curl -o ~/Library/LaunchAgents/com.granite.ollama.plist https://raw.githubusercontent.com/vedem1192/lm-desk/refs/heads/main/com.granite.ollama.plist
     curl -o ~/Library/LaunchAgents/com.granite.obee.plist https://raw.githubusercontent.com/vedem1192/lm-desk/refs/heads/main/com.granite.obee.plist
 
