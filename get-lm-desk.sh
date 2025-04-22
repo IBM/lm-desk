@@ -473,9 +473,9 @@ function start_ollama {
         green "Starting ollama"
         if [ "$dry_run" == "1" ]
         then
-            run $ollama_bin serve
+            run $ollama_bin serve > $(work_dir)/server.log 2>&1
         else
-            $ollama_bin serve &
+            $ollama_bin serve > $(work_dir)/server.log 2>&1 &
             ollama_pid=$!
         fi
     fi
