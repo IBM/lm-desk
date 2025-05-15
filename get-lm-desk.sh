@@ -602,7 +602,6 @@ function install_obee {
         # 1. Do the plist stuff
         $curl_bin -o $HOME/Library/LaunchAgents/com.granite.ollama.plist https://raw.githubusercontent.com/IBM/lm-desk/refs/heads/main/com.granite.ollama.plist
         $curl_bin -o $HOME/Library/LaunchAgents/com.granite.obee.plist https://raw.githubusercontent.com/IBM/lm-desk/refs/heads/main/com.granite.obee.plist
-        $curl_bin -o $HOME/Library/LaunchAgents/com.granite.obee.update.plist https://raw.githubusercontent.com/IBM/lm-desk/refs/heads/main/com.granite.obee.update.plist
 
         open_webui_script=https://raw.githubusercontent.com/IBM/lm-desk/refs/heads/main/scripts/openwebui.py
 
@@ -610,7 +609,6 @@ function install_obee {
             sed -i '' -e 's|<OLLAMA_BIN>|'"$ollama_bin"'|g' $HOME/Library/LaunchAgents/com.granite.ollama.plist
             sed -i '' -e 's|<UV_BIN>|'"$uv_bin"'|g' $HOME/Library/LaunchAgents/com.granite.obee.plist
             sed -i '' -e 's|<OPEN_WEBUI_SCRIPT>|'"$open_webui_script"'|g' $HOME/Library/LaunchAgents/com.granite.obee.plist
-            sed -i '' -e 's|<OPEN_WEBUI_SCRIPT>|'"$open_webui_script"'|g' $HOME/Library/LaunchAgents/com.granite.obee.update.plist
         fi
 
         # 2. Do the brew tap stuff
