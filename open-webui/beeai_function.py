@@ -2,14 +2,22 @@
 General-purpose Open WebUI Function for BeeAI agents
 """
 # Standard
-from functools import partial
-from typing import AsyncGenerator, Awaitable, Callable, List
+from typing import AsyncGenerator, Awaitable, Callable, Iterable, List
 import logging
 import re
 
 # Third Party
-from acp import types as acp_types
-from beeai_sdk.utils.api import send_request, send_request_with_notifications
+from acp_sdk.client import Client
+from acp_sdk import (
+    Message,
+    Agent,
+    GenericEvent,
+    MessagePartEvent,
+    MessagePart,
+)
+
+
+
 from fastapi import Request
 from open_webui import config as open_webui_config
 from pydantic import BaseModel, Field
@@ -22,12 +30,9 @@ class Pipe:
     def __init__(self):
         self.type = "pipe"
         self.valves = self.Valves()
-        self.base_url = self.valves.BEEAI_URL.rstrip("/")
-        self.mcp_url = f"{self.base_url}/mcp/sse"
-        self.api_url = f"{self.base_url}/api/v1"
+        base_url = self.valves.BEEAI_URL.rstrip("/")
+        self.client = Client(base_url=f"{base_url}/api/v1/acp")
         self._agents = None
-        self._send_request = partial(send_request, self.mcp_url)
-        self._send_request_with_notifications = partial(send_request_with_notifications, self.mcp_url)
 
     async def pipes(self):
         return [
@@ -75,82 +80,59 @@ class Pipe:
 
             # Format the agent input
             # TODO: More robust mapping not based on the UI type!
-            match agent.ui.get("type"):
+            match agent.metadata.ui.get("type"):
                 case "chat":
-                    req = {"messages": messages}
+                    req = [Message(parts=[msg]) for msg in messages]
                 case "hands-off":
                     user_messages = [msg for msg in messages if msg["role"] == "user"]
                     if not user_messages:
                         raise ValueError("No user messages found!")
-                    req = {"text": user_messages[-1]["content"]}
+                    req = Message(parts=[MessagePart(content=user_messages[-1]["content"])])
 
                     # Get any context documents
-                    if documents := self._parse_context_documents(messages):
-                        req["documents"] = documents
+                    documents = []
+                    for i, document in enumerate(self._parse_context_documents(messages) or []):
+                        if content := document.get("page_content"):
+                            title = document.get("metadata", {}).get("title", str(i + 1))
+                            documents.append(
+                                Message(
+                                    parts=[MessagePart(content=content, role="document", title=title)]
+                                )
+                            )
+                    if documents:
+                        req = documents + [req]
                 case _ as ui_type:
                     raise ValueError(f"Unknown agent type: {ui_type}")
 
             # Run the agent with streaming output
-            last_result_streamed = False
-            async for msg in self._send_request_with_notifications(
-                acp_types.RunAgentRequest(
-                    method="agents/run",
-                    params=acp_types.RunAgentRequestParams(
-                        name=agent_name,
-                        input=req)
-                    ),
-
-                acp_types.RunAgentResult,
-            ):
-                match msg:
-                    case acp_types.ServerNotification(
-                        root=acp_types.AgentRunProgressNotification(
-                            params=acp_types.AgentRunProgressNotificationParams(
-                                delta=delta
-                            )
-                        )
-                    ):
-                        if delta_text := delta.get("text"):
-                            last_result_streamed = True
-                            yield delta_text
-                        elif messages := delta.get("messages"):
-                            for assistant_msg in messages:
-                                if content := assistant_msg.get("content"):
-                                    last_result_streamed = True
-                                    yield content
-                        elif logs := delta.get("logs"):
-                            # Ignore logs after the real results start coming
-                            if last_result_streamed:
-                                continue
-                            for log in list(filter(bool, logs)):
-                                if text := log.get("message", "").strip():
-                                    short_text = text[:50]
-                                    if short_text != text:
-                                        short_text += "..."
-                                    metadata = log.get("metadata") or []
-                                    if isinstance(metadata, str):
-                                        metadata = [metadata]
-                                    metadata = list(filter(bool, metadata))
-                                    detail_body = "\n".join([text] + metadata)
-                                    details = f"<details>\n\n<summary>{short_text}</summary>\n\n{detail_body}</details>\n"
-                                    yield details
+            logging.info("Calling agent: %s", agent.name)
+            last_log = True
+            async for event in self.client.run_stream(agent=agent.name, input=req):
+                match event:
+                    case GenericEvent():
+                        if not last_log:
+                            continue
+                        data = self._filter_dict(event.generic.model_dump())
+                        if "agent_name" in data:
+                            (_, content) = list(self._omit(data, {"agent_name", "agent_idx"}).items())[0]
+                            new_log_type = f"\[{data['agent_name']}]: {new_log_type}"
                         else:
-                            logging.debug("Unknown delta: %s", delta)
+                            (_, content) = list(data.items())[0]
+                        content = content.strip()
+                        if content:
+                            short_text = content[:50]
+                            if short_text != content:
+                                while short_text[-3:] != "...":
+                                    short_text += "."
+                            details = f"<details>\n\n<summary>{short_text}</summary>\n\n{content}</details>\n"
+                            yield details
 
-                    case acp_types.RunAgentResult() as result:
-                        if not last_result_streamed:
-                            output_dict = result.model_dump().get("output", {})
-                            if text := output_dict.get("text"):
-                                last_result_streamed = False
-                                yield text
-                            elif messages := output_dict.get("messages"):
-                                for assistant_msg in messages:
-                                    if content := assistant_msg.get("content"):
-                                        last_result_streamed = False
-                                        yield content
+                    case MessagePartEvent():
+                        last_log = False
+                        yield event.part.content
 
                     case _:
-                        log.debug("Unknown message type (%s): %s", type(msg), msg)
+                        logging.debug("Unknown event type (%s): %s", type(event), event)
 
         except Exception as err:
             logging.error("Got an error! %s", err, exc_info=True)
@@ -158,13 +140,18 @@ class Pipe:
 
     ## Implementation Details ##################################################
 
-    async def _get_agents(self) -> dict[str, acp_types.Agent]:
+    @staticmethod
+    def _filter_dict(map: dict, value_to_exclude=None) -> dict:
+        """Remove entries with unwanted values (None by default) from dictionary."""
+        return {filter: value for filter, value in map.items() if value is not value_to_exclude}
+
+    @staticmethod
+    def _omit(dict: dict, keys: Iterable[str]) -> dict:
+        return {key: value for key, value in dict.items() if key not in keys}
+
+    async def _get_agents(self) -> dict[str, Agent]:
         if self._agents is None:
-            result = await self._send_request(
-                acp_types.ListAgentsRequest(method="agents/list"),
-                acp_types.ListAgentsResult,
-            )
-            self._agents = {agent.name: agent for agent in result.agents}
+            self._agents = {agent.name: agent async for agent in self.client.agents()}
         return self._agents
 
     def _is_open_webui_request(self, body):
