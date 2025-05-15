@@ -14,7 +14,7 @@
             <string>--update</string>
         </array>
         <key>KeepAlive</key>
-            <fakse/>
+            <false/>
         <key>StandardErrorPath</key>
         <string>/tmp/obee.update.err</string>
         <key>StandardOutPath</key>
