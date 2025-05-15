@@ -740,6 +740,7 @@ function configure_beeai {
     $ollama_bin create $beeai_default_model -f $modelfile
 
     # Configure beeai
+    brown "Starting beeai (this can take a while the first time)..."
     $beeai_bin env add LLM_API_BASE=http://localhost:11434/v1 &>/dev/null
     $beeai_bin env add LLM_API_KEY=ollama &>/dev/null
     $beeai_bin env add LLM_MODEL=$beeai_default_model &>/dev/null

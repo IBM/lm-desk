@@ -5,6 +5,7 @@ General-purpose Open WebUI Function for BeeAI agents
 from functools import partial
 from typing import AsyncGenerator, Awaitable, Callable, List
 import logging
+import re
 
 # Third Party
 from acp import types as acp_types
@@ -82,6 +83,10 @@ class Pipe:
                     if not user_messages:
                         raise ValueError("No user messages found!")
                     req = {"text": user_messages[-1]["content"]}
+
+                    # Get any context documents
+                    if documents := self._parse_context_documents(messages):
+                        req["documents"] = documents
                 case _ as ui_type:
                     raise ValueError(f"Unknown agent type: {ui_type}")
 
@@ -195,3 +200,34 @@ class Pipe:
                 return True
 
         return False
+
+    @staticmethod
+    def _parse_context_documents(messages) -> list[dict]:
+        """Parse a list of documents in HF format if given in the messages.
+
+        When passing documents to a Function, Open WebUI uses the system prompt
+        in the following format:
+
+        ...INSTRUCTIONS...
+        <context>
+        <source id="1">CONTENT</source>
+        ...
+        </context>
+        ...SUFFIX...
+        """
+        system_messages = [msg["content"] for msg in messages if msg["role"] == "system"]
+        if not system_messages:
+            return []
+        documents = []
+        for msg in system_messages:
+            if context_match := re.search("<context>((?s:.*?))</context>", msg):
+                for source_match in re.findall(
+                    '<source id="([0-9]+)">((?s:.*?))</source>',
+                    context_match.group(1)):
+                    documents.append({
+                        "metadata": {
+                            "title": source_match[0],
+                        },
+                        "page_content": source_match[1],
+                    })
+        return documents
