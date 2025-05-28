@@ -1,8 +1,8 @@
 # /// script
 # requires-python = ">=3.11,<3.12"
 # dependencies = [
-#     "open-webui>=0.6.0",
-#     "beeai-sdk==0.0.22"
+#     "open-webui>=0.6.9",
+#     "acp-sdk>=0.10.0,<0.11"
 # ]
 # ///
 """
@@ -57,7 +57,6 @@ def main():
         except Exception as e:
             os.environ["USE_CUDA_DOCKER"] = "false"
             os.environ["LD_LIBRARY_PATH"] = ":".join(LD_LIBRARY_PATH)
-
 
 
     import open_webui.main  # we need set environment variables before importing main

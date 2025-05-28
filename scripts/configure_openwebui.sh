@@ -12,6 +12,7 @@ parse_args() {
     function_name=""
     description=""
     valves=""
+    verbose=0
 
     # Process each argument
     while [[ $# > 0 ]]; do
@@ -35,6 +36,9 @@ parse_args() {
             -v|--valves)
                 valves="$2"
                 shift
+                ;;
+            -V|--verbose)
+                verbose=1
                 ;;
             *) # Unknown option, handle error
                 echo "Error: Unknown option '$1'"
@@ -83,6 +87,7 @@ brown "Function File Path: $function_file"
 brown "Function Name: $function_name"
 brown "Function ID: $function_id"
 brown "Description: $description"
+brown "Verbose: $verbose"
 
 # Sign in and get a token
 # NOTE: This assumes running without auth!
@@ -106,12 +111,17 @@ function step_api_call {
     step=$1
     shift
     blue $step...
-    if api_call "$@" &>/dev/null
+    res=$(api_call "$@")
+    if [ "$?" == "0" ]
     then
         green OK
     else
         red FAIL
         return 1
+    fi
+    if [ "$verbose" == "1" ]
+    then
+        echo $res | jq
     fi
 }
 
